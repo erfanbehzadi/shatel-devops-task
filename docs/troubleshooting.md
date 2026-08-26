@@ -1,128 +1,35 @@
 # Troubleshooting Guide
 
-This guide helps you quickly diagnose common issues in this high-availability setup.
+This guide documents issues encountered during setup and their solutions.
 
-## 1. Web page is not loading
+## 1. "No space left on device" even when disk has free space
+**Cause:** The 20GB disk was mounted on `/var/lib` before copying existing data. The `dpkg` database was missing.
+**Solution:** Unmount the new disk, copy `/var/lib` contents to the new disk using `cp -a`, then remount.
 
-### Check container status
-```bash
-docker ps
-```
-If no container named `web` is running:
-```bash
-cd ~/shatel-task/docker
-docker compose up -d --build
-```
+## 2. apt lock held by `unattended-upgrade`
+**Cause:** Automatic Ubuntu upgrades were running in background.
+**Solution:** Stop and disable `unattended-upgrades`, remove lock files, then run `apt` again.
 
-### Check Docker service
-```bash
-systemctl status docker
-```
-If it's not active:
-```bash
-sudo systemctl start docker
-```
+## 3. DNS resolution failure after setting static IP
+**Cause:** `systemd-resolved` still using old nameserver.
+**Solution:** Replace `/etc/resolv.conf` with a static file containing `nameserver 8.8.8.8` and `8.8.4.4`.
 
-### Check port 80 listening
-```bash
-ss -tlnp | grep :80
-```
-Expected output should show a process listening on `0.0.0.0:80`.
+## 4. Docker daemon permission denied for non-root user
+**Cause:** User not in `docker` group or session not refreshed.
+**Solution:** Add user to `docker` group (`sudo usermod -aG docker devops`) and re-login or `newgrp docker`.
 
-### Check Nginx inside container
-```bash
-docker exec web nginx -t
-```
-If configuration test fails, inspect the mounted `nginx.conf` on the host.
+## 5. SSH login with password denied after hardening
+**Cause:** `PasswordAuthentication no` is set.
+**Solution:** Use SSH key authentication. If you don't have private key, generate a new key pair and add public key to `authorized_keys`.
 
-## 2. VIP not present on server1 or server2
+## 6. Keepalived failover not working
+**Cause:** VIP not moving because Docker stop was not detected or `check_web.sh` missing.
+**Solution:** Ensure `check_web.sh` exists and is executable, verify Keepalived configuration, and test by stopping Docker on master.
 
-### Check Keepalived service
-```bash
-systemctl status keepalived
-```
-If not active:
-```bash
-sudo systemctl restart keepalived
-```
+## 7. Fail2ban not banning IPs or no f2b-sshd chain
+**Cause:** `action` not set in `jail.local` or IP ignored.
+**Solution:** Set `action = %(action_mwl)s` in `[sshd]` section, restart Fail2ban, and ensure IP is not in `ignoreip`.
 
-### Check VIP on server
-```bash
-ip a | grep 192.168.2.200
-```
-If missing, verify `/etc/keepalived/keepalived.conf` and `/etc/keepalived/check_web.sh`.
-
-### Check check script manually
-```bash
-bash /etc/keepalived/check_web.sh
-```
-If it exits non-zero, ensure Docker is running and a container named `web` exists.
-
-## 3. Failover is not happening
-
-- Make sure server1 and server2 have different priorities (MASTER=150, BACKUP=100).
-- Ensure `advert_int` and `authentication` match in both configs.
-- Test by stopping Docker on server1:
-  ```bash
-  sudo systemctl stop docker
-  ```
-  Wait 15-20 seconds, then check VIP on server2:
-  ```bash
-  ip a | grep 192.168.2.200
-  ```
-  It should appear on server2.
-
-## 4. Email report not arriving
-
-- Run script manually:
-  ```bash
-  sudo /usr/local/bin/check_web_logs.sh
-  ```
-- Check mailbox:
-  ```bash
-  sudo -u devops mail
-  ```
-- Verify cron job:
-  ```bash
-  crontab -l | grep check_web_logs
-  ```
-
-## 5. Log rotation not working
-
-- Test configuration:
-  ```bash
-  sudo logrotate -d /etc/logrotate.d/nginx-custom
-  ```
-- Check cron:
-  ```bash
-  crontab -l | grep logrotate
-  ```
-- Ensure log files exist at:
-  ```
-  /home/erfan/shatel-task/docker/logs/
-  ```
-
-## 6. SSH login failing with key
-
-- Confirm `devops` user exists and key is in `/home/devops/.ssh/authorized_keys`.
-- Check permissions:
-  ```bash
-  ls -l /home/devops/.ssh/authorized_keys
-  ```
-  Should be `-rw-------` owned by `devops`.
-- Check `sshd_config`:
-  ```bash
-  grep -E 'PermitRootLogin|PasswordAuthentication|PubkeyAuthentication|AllowUsers' /etc/ssh/sshd_config
-  ```
-
-## 7. Docker permission denied for devops
-
-- Ensure user is in docker group:
-  ```bash
-  groups devops
-  ```
-- If not:
-  ```bash
-  sudo usermod -aG docker devops
-  ```
-- Then log out and back in.
+## 8. Sync script prompts for password
+**Cause:** `sync_key` public key not added to target server's `authorized_keys` or key corrupted.
+**Solution:** Regenerate `sync_key`, use `ssh-copy-id` to install public key on server2, and update script to use `scp` instead of `rsync`.
