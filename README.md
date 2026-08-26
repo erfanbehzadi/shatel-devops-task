@@ -1,4 +1,4 @@
-# Shuttle DevOps Task – High Availability Web Server
+# Shatel DevOps Task – High Availability Web Server
 
 ## Overview
 This project sets up a high-availability web service using two Linux servers, Docker, Nginx, and Keepalived. It includes security hardening, automated log rotation, monitoring scripts, and documentation.
@@ -61,7 +61,7 @@ Use the following commands:
 
 ## Directory Structure
 ```
-shuttle-devops-task/
+shatel-devops-task/
 ├── README.md
 ├── decisions.md
 ├── docker/
