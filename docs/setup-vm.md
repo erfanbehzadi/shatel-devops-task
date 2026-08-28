@@ -1,13 +1,13 @@
 # VM Setup Guide
 
 ## Overview
-This guide explains how to provision two Ubuntu 22.04 virtual machines with two disks each.
+This guide explains how to provision two Ubuntu 22.04 virtual machines with two disks each, configure static IPs, and prepare them for the rest of the project.
 
 ## Steps
 
 ### 1. Create Two VMs
-- Use VMware Workstation or VirtualBox.
-- Create two VMs named `server1` and `server2`.
+- Use VMware Workstation (or VirtualBox).
+- Create two VMs named `shatel-server1` and `shatel-server2`.
 - Allocate:
   - 2 GB RAM
   - 2 CPU cores
@@ -19,10 +19,10 @@ This guide explains how to provision two Ubuntu 22.04 virtual machines with two 
 - Boot and install with default settings.
 - During installation:
   - Set hostname:
-    - `server1` for first VM
-    - `server2` for second VM
+    - `shatel-server1` for first VM
+    - `shatel-server2` for second VM
   - Create a user (e.g., `erfan`) with sudo privileges.
-  - Enable OpenSSH server.
+  - **Enable OpenSSH server** when prompted.
 
 ### 3. Configure Static IPs
 Edit `/etc/netplan/00-installer-config.yaml` on each server.
@@ -45,7 +45,7 @@ network:
   version: 2
 ```
 
-For server2 (IP 192.168.2.102):
+For server2 (IP `192.168.2.102/24`):
 ```yaml
 network:
   ethernets:
@@ -68,7 +68,14 @@ Apply with:
 sudo netplan apply
 ```
 
-### 4. Partition and Mount Second Disk (20 GB)
+### 4. Set Static DNS (if systemd-resolved does not use netplan DNS)
+```bash
+sudo rm -f /etc/resolv.conf
+echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf
+echo "nameserver 8.8.4.4" | sudo tee -a /etc/resolv.conf
+```
+
+### 5. Partition and Mount Second Disk (20 GB)
 On each server:
 ```bash
 sudo parted /dev/sdb --script mklabel gpt
@@ -79,8 +86,20 @@ sudo mount /dev/sdb1 /var/lib
 echo '/dev/sdb1 /var/lib ext4 defaults 0 2' | sudo tee -a /etc/fstab
 ```
 
-### 5. Disable Automatic Updates (Optional)
+### 6. Disable Automatic Updates (Optional but Recommended for Lab)
 ```bash
 sudo systemctl stop unattended-upgrades
 sudo systemctl disable unattended-upgrades
+sudo systemctl stop apt-daily.timer
+sudo systemctl disable apt-daily.timer
+sudo systemctl stop apt-daily-upgrade.timer
+sudo systemctl disable apt-daily-upgrade.timer
+echo -e 'APT::Periodic::Update-Package-Lists "0";\nAPT::Periodic::Unattended-Upgrade "0";' | sudo tee /etc/apt/apt.conf.d/20auto-upgrades
 ```
+
+## Result
+After these steps, both servers have:
+- Static IPs in the same subnet (`192.168.2.0/24`).
+- Second disk mounted at `/var/lib`.
+- SSH server running.
+- No automatic updates to interfere with lab work.
