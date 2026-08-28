@@ -13,4 +13,7 @@ sudo chmod 600 /home/devops/.ssh/authorized_keys
 # Harden SSH
 sudo sed -i 's/^PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
 sudo sed -i 's/^PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+if ! grep -q '^AllowUsers' /etc/ssh/sshd_config; then
+    echo "AllowUsers devops" | sudo tee -a /etc/ssh/sshd_config
+fi
 sudo systemctl restart sshd
