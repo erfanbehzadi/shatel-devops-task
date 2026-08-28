@@ -1,4 +1,3 @@
-```markdown
 # Troubleshooting Guide
 
 This guide documents common issues encountered during the setup and their solutions, specific to this project environment.
