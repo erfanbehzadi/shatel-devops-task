@@ -1,9 +1,10 @@
+```markdown
 # Web Server Monitoring and Email Reporting
 
 ## Overview
 A daily monitoring script analyzes Nginx logs and sends an email report to the `devops` user. It finds:
 - The top 3 IP addresses by number of HTTP requests.
-- All 404 errors in the error log.
+- All 404 errors in the access log.
 
 ## Script Location
 
@@ -23,8 +24,8 @@ echo "Top 3 IPs by requests:" > "$REPORT"
 awk '{print $1}' "$ACCESS_LOG" | sort | uniq -c | sort -nr | head -3 >> "$REPORT"
 
 echo "" >> "$REPORT"
-echo "Errors 404:" >> "$REPORT"
-grep " 404 " "$ERROR_LOG" >> "$REPORT" 2>/dev/null || echo "No 404 errors found." >> "$REPORT"
+echo "404 Errors:" >> "$REPORT"
+grep ' 404 ' "$ACCESS_LOG" >> "$REPORT" 2>/dev/null || echo "No 404 errors found." >> "$REPORT"
 
 mail -s "Daily Web Logs Report - $(date +%F)" devops@localhost < "$REPORT"
 ```
@@ -47,6 +48,8 @@ mail
 
 ## Notes
 - The script uses `awk`, `sort`, `uniq`, and `grep` to process logs without external dependencies.
+- 404 errors are read from the access log, where Nginx records them by default.
 - Email is sent locally to `devops@localhost`.
 - The report is stored temporarily in `/tmp` with a date in the filename.
 - The monitoring script and cron job are configured on both servers.
+```
