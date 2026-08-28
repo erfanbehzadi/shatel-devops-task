@@ -53,6 +53,14 @@ Cron runs every 3 days at midnight:
 sudo logrotate -d /etc/logrotate.d/nginx-custom
 ```
 
+To force rotation immediately:
+
+```bash
+sudo logrotate -f /etc/logrotate.d/nginx-custom
+```
+
+After rotation, you should see compressed files with `.gz` in the logs directory.
+
 ## Note
 
 Because logs are bind-mounted from the host, they survive container recreation. However, when the container is removed and recreated, only files inside the container (not bind-mounted) are lost. Bind-mounted logs remain on the host.
