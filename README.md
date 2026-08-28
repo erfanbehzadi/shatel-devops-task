@@ -1,4 +1,4 @@
-# Shatel DevOps Task – High Availability Web Server
+# Shuttle DevOps Task – High Availability Web Server
 
 ## Overview
 This project sets up a high-availability web service using two Linux servers, Docker, Nginx, and Keepalived. It includes security hardening, automated log rotation, monitoring scripts, and documentation.
@@ -11,7 +11,7 @@ This project sets up a high-availability web service using two Linux servers, Do
 - **Disks:**
   - 10 GB for `/`
   - 20 GB mounted at `/var/lib`
-- **Web Server:** Nginx in Docker (Alpine base, non-root user, isolated network)
+- **Web Server:** Nginx in Docker (Alpine base, non-root user, isolated network, healthcheck)
 - **Failover:** Keepalived (VRRP) with active/passive setup
 - **Security:**
   - SSH key-only login (no root, no password)
@@ -20,6 +20,7 @@ This project sets up a high-availability web service using two Linux servers, Do
 - **Logging:**
   - Logrotate every 3 days
   - Daily monitoring script that reports top 3 IPs and 404 errors via email
+- **Key Sync:** Automatic sync of `authorized_keys` between servers every minute
 
 ## Setup Instructions
 
@@ -29,18 +30,19 @@ This project sets up a high-availability web service using two Linux servers, Do
 - Partition and mount the 20 GB disk at `/var/lib`.
 
 ### 2. Install Docker
-Use the following commands:
-- sudo apt update
-- sudo apt install -y ca-certificates curl gnupg lsb-release
-- sudo mkdir -p /etc/apt/keyrings
-- curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-- echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-- sudo apt update
-- sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-- sudo usermod -aG docker $USER
+```bash
+sudo apt update
+sudo apt install -y ca-certificates curl gnupg lsb-release
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo usermod -aG docker $USER
+```
 
 ### 3. Deploy the web server
-- Copy the `docker/` directory to each server.
+- Copy `docker/` directory to each server.
 - Run `docker compose up -d --build` inside the `docker/` directory.
 
 ### 4. Configure Keepalived
@@ -61,13 +63,14 @@ Use the following commands:
 
 ## Directory Structure
 ```
-shatel-devops-task/
+shuttle-devops-task/
 ├── README.md
 ├── decisions.md
+├── docs/
+├── scripts/
 ├── docker/
 ├── keepalived/
-├── scripts/
-└── docs/ (optional)
+└── .github/ (optional)
 ```
 
 ## Author
