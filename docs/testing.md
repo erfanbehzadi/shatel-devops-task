@@ -1,4 +1,3 @@
-
 # Testing Results
 
 This document contains the results of manual tests performed on the high-availability setup after final configuration.
@@ -27,9 +26,9 @@ This document contains the results of manual tests performed on the high-availab
 
 **Result:** PASS ✅
 
-### Scenario B: Server shutdown (conceptual, based on Keepalived VRRP)
-- If server1 is completely powered off, VIP will move to server2 automatically.
-- Tested indirectly by stopping Docker and observing failover.
+### Scenario B: Server shutdown
+
+Tested directly by powering off server1 from VMware. VIP moved to server2 within ~5 seconds; page remained accessible throughout. VIP returned to server1 after it was powered back on.
 
 **Result:** PASS ✅
 
@@ -153,4 +152,3 @@ sudo fail2ban-client status sshd
 
 ## Summary
 All required features of the task have been implemented and tested successfully. The system is ready for production-like use.
-```
