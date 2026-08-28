@@ -9,3 +9,7 @@ sudo iptables -A INPUT -p tcp --dport 22 -j ACCEPT
 sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
 sudo iptables -A INPUT -p vrrp -j ACCEPT
 sudo netfilter-persistent save
+
+# Flushing iptables above also removes Docker's own chains (DOCKER, DOCKER-ISOLATION-*).
+# Restarting Docker rebuilds them so container networking keeps working.
+sudo systemctl restart docker
