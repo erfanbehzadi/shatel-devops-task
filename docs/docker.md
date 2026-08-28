@@ -1,3 +1,4 @@
+
 # Docker & Web Server Setup
 
 ## Overview
@@ -16,9 +17,47 @@ Key features:
 - Sets `USER appuser` for runtime.
 - Adds `HEALTHCHECK` to monitor Nginx health.
 
-Build the image:
-```bash
-docker build -t docker-web .
+### Full Dockerfile
+
+```dockerfile
+FROM nginx:alpine
+
+# نصب ابزارهای عیب‌یابی مورد نیاز
+RUN apk add --no-cache \
+    curl \
+    tcpdump \
+    tcpflow \
+    vim \
+    htop \
+    libcap \
+    && rm -rf /var/cache/apk/*
+
+# ساخت کاربر غیر root با UID مشخص
+RUN addgroup -S appgroup && adduser -S -u 1000 -G appgroup appuser
+
+# ساخت دایرکتوری‌های لازم و دادن مالکیت به کاربر غیر root
+RUN mkdir -p /run/nginx /var/log/nginx /var/cache/nginx /usr/share/nginx/html \
+    && chown -R appuser:appgroup \
+       /run/nginx \
+       /var/log/nginx \
+       /var/cache/nginx \
+       /usr/share/nginx/html
+
+# اجازه بایند پورت ۸۰ به کاربر غیر root
+RUN setcap 'cap_net_bind_service=+ep' /usr/sbin/nginx
+
+# کپی کانفیگ سفارشی Nginx
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# تغییر کاربر اجراکننده
+USER appuser
+
+EXPOSE 80
+
+# Healthcheck برای بررسی سلامت Nginx
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD curl -f http://localhost/ || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]
 ```
 
 ## Docker Compose
@@ -33,9 +72,30 @@ The `docker-compose.yml` file:
 - Uses an isolated bridge network with subnet `172.20.0.0/24`.
 - Restarts container unless stopped manually.
 
-Run with:
-```bash
-docker compose up -d --build
+### Full docker-compose.yml
+
+```yaml
+services:
+  web:
+    build: .
+    container_name: web
+    ports:
+      - "80:80"
+    volumes:
+      - ../html:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:rw
+      - ./logs:/var/log/nginx
+    networks:
+      isolated:
+        ipv4_address: 172.20.0.10
+    restart: unless-stopped
+
+networks:
+  isolated:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
 ```
 
 ## Container Security Considerations
@@ -56,3 +116,4 @@ docker exec web id
 ## Notes
 - The image content size is approximately 38 MB (based on `nginx:alpine` plus troubleshooting tools).
 - If the container is deleted and recreated, bind-mounted data (HTML, config, logs) remains on the host; any data stored inside the container’s writable layer is lost.
+```
