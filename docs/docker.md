@@ -1,4 +1,3 @@
-
 # Docker & Web Server Setup
 
 ## Overview
@@ -22,7 +21,7 @@ Key features:
 ```dockerfile
 FROM nginx:alpine
 
-# Install troubleshooting tools
+# Install required troubleshooting tools
 RUN apk add --no-cache \
     curl \
     tcpdump \
@@ -32,10 +31,10 @@ RUN apk add --no-cache \
     libcap \
     && rm -rf /var/cache/apk/*
 
-# Create non-root user with fixed UID
+# Create a non-root user with a fixed UID
 RUN addgroup -S appgroup && adduser -S -u 1000 -G appgroup appuser
 
-# Create required directories and set ownership
+# Create required directories and give ownership to the non-root user
 RUN mkdir -p /run/nginx /var/log/nginx /var/cache/nginx /usr/share/nginx/html \
     && chown -R appuser:appgroup \
        /run/nginx \
@@ -43,17 +42,18 @@ RUN mkdir -p /run/nginx /var/log/nginx /var/cache/nginx /usr/share/nginx/html \
        /var/cache/nginx \
        /usr/share/nginx/html
 
-# Allow binding port 80 without root
+# Allow binding to port 80 without root
 RUN setcap 'cap_net_bind_service=+ep' /usr/sbin/nginx
 
-# Copy custom nginx config
+# Copy custom Nginx config
 COPY nginx.conf /etc/nginx/nginx.conf
 
+# Switch to the non-root user
 USER appuser
 
 EXPOSE 80
 
-# Healthcheck to monitor nginx
+# Healthcheck to monitor Nginx health
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD curl -f http://localhost/ || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
@@ -65,8 +65,8 @@ The `docker-compose.yml` file:
 - Builds the image from the current directory.
 - Maps host port 80 to container port 80.
 - Mounts:
-  - `./html:/usr/share/nginx/html:ro` (HTML content, read-only inside container)
-  - `./nginx.conf:/etc/nginx/nginx.conf:ro` (custom config, read-only inside container)
+  - `./html:/usr/share/nginx/html:ro` (HTML content, read-only)
+  - `./nginx.conf:/etc/nginx/nginx.conf:ro` (custom config, read-only)
   - `./logs:/var/log/nginx` (log files)
 - Uses an isolated bridge network with subnet `172.20.0.0/24`.
 - Restarts container unless stopped manually.
@@ -103,7 +103,6 @@ networks:
 - Isolated network with only port 80 exposed.
 - Logs and HTML are bind-mounted for persistence.
 - Healthcheck ensures the web server is responding.
-- Both HTML and Nginx config are mounted read-only inside the container; they can be modified on the host only.
 
 ## Troubleshooting Commands
 ```bash
@@ -115,6 +114,4 @@ docker exec web id
 
 ## Notes
 - The image content size is approximately 38 MB (based on `nginx:alpine` plus troubleshooting tools).
-- If the container is deleted and recreated, bind-mounted data (HTML, config, logs) remains on the host; any data stored inside the container’s writable layer is lost.
-- **Important:** The HTML folder is located inside the `docker/` directory (`docker/html/`). If your current setup has it in `../html`, adjust the compose file or move the folder accordingly.
-```
+- If the container is deleted and recreated, bind-mounted data (HTML, config, logs) remains on the host; any data stored inside the container's writable layer is lost.
