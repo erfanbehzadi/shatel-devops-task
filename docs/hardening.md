@@ -1,7 +1,7 @@
 # Security Hardening Guide
 
 ## Overview
-This guide explains how to harden SSH, configure firewall (iptables), and set up Fail2ban.
+This guide explains how to harden SSH, configure firewall (iptables), and set up Fail2ban on both servers.
 
 ## SSH Hardening
 
@@ -65,21 +65,53 @@ Install and configure:
 
 ```bash
 sudo apt install -y fail2ban
-sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
-```
+sudo tee /etc/fail2ban/jail.local > /dev/null << 'EOF'
+[DEFAULT]
+ignoreip = 127.0.0.1/8 192.168.2.101
 
-Edit `/etc/fail2ban/jail.local` and ensure the `[sshd]` section is enabled:
-
-```
 [sshd]
 enabled = true
 port = ssh
 maxretry = 3
 bantime = 1h
+action = %(action_mwl)s
+EOF
 ```
 
 Start and enable:
 
 ```bash
 sudo systemctl enable --now fail2ban
+sudo systemctl restart fail2ban
 ```
+
+## Verification
+
+### SSH
+```bash
+grep -E '^(PermitRootLogin|PasswordAuthentication|PubkeyAuthentication|AllowUsers)' /etc/ssh/sshd_config
+```
+Expected:
+```
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+AllowUsers devops
+```
+
+### iptables
+```bash
+sudo iptables -S
+```
+Expected: INPUT policy DROP, with ACCEPT only for lo, ESTABLISHED/RELATED, ports 22, 80, and VRRP.
+
+### Fail2ban
+```bash
+sudo systemctl status fail2ban
+sudo fail2ban-client status sshd
+```
+Expected: active (running) and jail `sshd` with `Currently banned: 0`.
+
+## Notes
+- Fail2ban chain `f2b-sshd` appears in iptables only after an IP is banned.
+- Both servers have the same hardening configuration.
