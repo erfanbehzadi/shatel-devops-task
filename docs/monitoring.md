@@ -49,3 +49,4 @@ mail
 - The script uses `awk`, `sort`, `uniq`, and `grep` to process logs without external dependencies.
 - Email is sent locally to `devops@localhost`.
 - The report is stored temporarily in `/tmp` with a date in the filename.
+- The monitoring script and cron job are configured on both servers.
